@@ -17,7 +17,7 @@ You can find more info on:
   - The official website of Skycoin - https://www.skycoin.net/
 
 # Installation
-Breakout CX  requires the latest version of [CX](https://github.com/skycoin/cx) to run.
+PacMan CX  requires the latest version of [CX](https://github.com/skycoin/cx) to run.
 
 Install the dependencies and devDependencies and start the server.
 After installing [CX](https://github.com/skycoin/cx) and all its dependencies clone this repository by running:
