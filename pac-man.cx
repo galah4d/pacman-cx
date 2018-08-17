@@ -1,0 +1,681 @@
+package main
+
+import "graphical2d"
+
+var x_cells i32 = 28
+var y_cells i32 = 31
+
+var CELL_WIDTH f32 = 0.07143
+var CELL_HEIGHT f32 = 0.0645
+
+var time f64
+
+// Item Types
+var PATH_CELL i32 = 3
+var WALL_CELL i32 = 1
+var PATH_CELL_WITH_SIMPLE_POINT i32 = 0
+var PATH_CELL_WITH_SUPER_POINT i32 = 2
+var TELEPORT_CELL i32 = 4
+var GATE_CELL i32 = 5
+
+// time related vars
+var TIME_LAST_GHOST_RELEASED f64 = 0.0
+
+// Ghost constants
+var GHOST_RADIUS f32 = 0.025
+
+// Ghost modes
+var GHOST_MODE_CHASE i32 = 0
+var GHOST_MODE_SCATTER i32 = 1
+var GHOST_MODE_FRIGHTENED i32 = 2
+var GHOST_MODE_IN_HOUSE i32 = 3
+
+// Directions
+var UP i32 = 0
+var DOWN i32 = 1
+var LEFT i32 = 2
+var RIGHT i32 = 3
+
+var SCORE i32 = 0
+var frame f32 = 0.0
+
+type Player struct {
+  position graphical2d.Position2D      // 2D position (x, y)
+  color graphical2d.Color              // RGB color (r, g, b)
+  radius f32
+  direction i32
+  index_x i32
+  index_y i32
+}
+var player Player
+
+type Cell struct {
+  position graphical2d.Position2D
+  dimensions graphical2d.Dimensions2D
+  color graphical2d.Color
+  index_x i32
+  index_y i32
+  ctype i32
+}
+var cells [31][28]Cell
+
+func newPlayer (line i32, collumn i32, rad f32) (pl Player) {
+  var pos graphical2d.Position2D
+  pos = coords2position(line, collumn)
+
+  var col graphical2d.Color
+  col = graphical2d.newColor(1.0, 1.0, 0.0)
+
+  var pl Player
+  pl = Player{
+    position: pos,
+    color: col,
+    radius: rad,
+    direction: RIGHT,
+    index_x: collumn,
+    index_y: line}
+  return pl
+}
+
+func canMove(direction i32, line i32, collumn i32) (can_move bool)  {
+  var can_move bool = false
+  if bool.and(i32.eq(direction, UP), i32.eq(cells[i32.sub(line, 1)][collumn].ctype, PATH_CELL)) {
+    can_move = true
+  }
+  if bool.and(i32.eq(direction, DOWN), i32.eq(cells[i32.add(line, 1)][collumn].ctype, PATH_CELL)) {
+    can_move = true
+  }
+  if bool.and(i32.eq(direction, LEFT), i32.eq(cells[line][i32.sub(collumn, 1)].ctype, PATH_CELL)) {
+    can_move = true
+  }
+  if bool.and(i32.eq(direction, RIGHT), i32.eq(cells[line][i32.add(collumn, 1)].ctype, PATH_CELL)) {
+    can_move = true
+  }
+  return can_move
+}
+
+func movePlayer(direction i32) () {
+  if bool.eq(canMove(direction, player.index_y, player.index_x), true) {
+    if i32.eq(direction, UP) {
+      player.index_y = i32.sub(player.index_y, 1)
+    }
+    if i32.eq(direction, DOWN) {
+      player.index_y = i32.add(player.index_y, 1)
+    }
+    if i32.eq(direction, LEFT) {
+      player.index_x = i32.sub(player.index_x, 1)
+    }
+    if i32.eq(direction, RIGHT) {
+      player.index_x = i32.add(player.index_x, 1)
+    }
+    player.direction = direction
+    player.position = coords2position(player.index_y, player.index_x)
+  }
+
+  for i:=0; i<4; i++ {
+    checkPlayerGhostCollision(ghosts[i])
+  }
+}
+
+func coords2position(line i32, collumn i32) (position graphical2d.Position2D) {
+  var x f32
+  x = f32.add(-1.0, f32.add(f32.mul(i32.f32(collumn), CELL_WIDTH), f32.div(CELL_WIDTH, 2.0)))
+
+  var y i32
+  y = f32.sub(1.0, f32.add(f32.mul(i32.f32(line), CELL_HEIGHT), f32.div(CELL_HEIGHT, 2.0)))
+
+  var position graphical2d.Position2D
+  position = graphical2d.newPosition2D(x, y)
+  return position
+}
+
+func drawPlayer () () {
+  if lt.eq(frame, 1.0) {
+    graphical2d.drawCircle(player.position, player.radius, player.color)
+  } else {
+    graphical2d.drawCircle2(player.position, player.radius, player.color)
+  }
+}
+
+func newCell (x f32, y f32, line i32, col i32, ct i32) (cell Cell) {
+  var pos graphical2d.Position2D
+  pos = graphical2d.newPosition2D(x, y)
+
+  var dim graphical2d.Dimensions2D
+  dim = graphical2d.newDimensions2D(CELL_HEIGHT, CELL_WIDTH)
+
+  var cell Cell
+  cell = Cell{
+    position: pos,
+    dimensions: dim,
+    color: getCellColor(ct),
+    index_x: col,
+    index_y: line,
+    ctype: ct}
+  return block
+}
+
+func getCellColor (ctype i32) (color graphical2d.Color) {
+  var color graphical2d.Color
+
+  if i32.eq(ctype, PATH_CELL) {
+    color = graphical2d.newColor(0.0, 0.0, 0.0)
+  }
+  if i32.eq(ctype, WALL_CELL) {
+    color = graphical2d.newColor(0.0, 0.0, 1.0)
+  }
+  if i32.eq(ctype, GATE_CELL) {
+    color = graphical2d.newColor(1.0, 0.5, 0.0)
+  }
+
+  return color
+}
+
+type Ghost struct {
+  position graphical2d.Position2D
+  color graphical2d.Color
+  radius f32
+  index_x i32
+  index_y i32
+  direction i32
+  gtype i32
+  status i32
+  last_event_time f64
+}
+var ghosts [4]Ghost
+
+func newGhost(line i32, collumn i32, gt i32, ghost_mode i32) (ghost Ghost){
+  var pos graphical2d.Position2D
+  pos = coords2position(line, collumn)
+
+  var col graphical2d.Color
+  col = getGhostColor(gt)
+
+  var ghost Ghost
+  ghost = Ghost{
+    position: pos,
+    color: col,
+    radius: GHOST_RADIUS,
+    index_x: collumn,
+    index_y: line,
+    direction: UP,
+    gtype: gt,
+    status: ghost_mode,
+    last_event_time: 0}
+  return ghost
+}
+
+func getGhostColor (gtype i32) (color graphical2d.Color) {
+  var color graphical2d.Color
+
+  if i32.eq(gtype, 0) {
+    color = graphical2d.newColor(1.0, 0.0, 0.0)
+  }
+  if i32.eq(gtype, 1) {
+    color = graphical2d.newColor(0.0, 1.0, 0.0)
+  }
+  if i32.eq(gtype, 2) {
+    color = graphical2d.newColor(0.0, 1.0, 1.0)
+  }
+  if i32.eq(gtype, 3) {
+    color = graphical2d.newColor(1.0, 0.0, 1.0)
+  }
+
+  return color
+}
+
+func updateGhostMode(ghost Ghost) () {
+  if bool.and(i32.eq(ghost.status, GHOST_MODE_FRIGHTENED), gteq(f64.sub(glfw.GetTime(), ghost.last_event_time), f32.f64(10.0))) {
+    ghosts[ghost.gtype].status = GHOST_MODE_CHASE
+    ghosts[ghost.gtype].last_event_time = glfw.GetTime()
+  }
+}
+
+func drawGhost(ghost Ghost) () {
+  var color graphical2d.Color
+  if i32.eq(ghost.status, GHOST_MODE_FRIGHTENED) {
+    if bool.and(f32.lt(frame, 1.0), gteq(f64.sub(glfw.GetTime(), ghost.last_event_time), f32.f64(7.0))) {
+      color = graphical2d.newColor(1.0, 1.0, 1.0)
+    } else {
+      color = graphical2d.newColor(0.0, 0.0, 1.0)
+    }
+  }
+  if bool.or(i32.eq(ghost.status, GHOST_MODE_CHASE), i32.eq(ghost.status, GHOST_MODE_IN_HOUSE)) {
+    color = ghost.color
+  }
+  graphical2d.drawGhost(ghost.position, ghost.radius, color, frame)
+}
+
+func moveGhost(gtype i32) () {
+  var direction i32
+  if i32.eq(ghosts[gtype].status, GHOST_MODE_CHASE) {
+    direction = calculateGhostDirection(ghosts[gtype])
+  }
+  if bool.or(i32.eq(ghosts[gtype].status, GHOST_MODE_FRIGHTENED), i32.eq(ghosts[gtype].status, GHOST_MODE_IN_HOUSE)) {
+    direction = randomGhostDirection(ghosts[gtype])
+  }
+  ghosts[gtype].direction = direction
+
+  if i32.eq(direction, UP) {
+    ghosts[gtype].index_y = i32.sub(ghosts[gtype].index_y, 1)
+  }
+  if i32.eq(direction, DOWN) {
+    ghosts[gtype].index_y = i32.add(ghosts[gtype].index_y, 1)
+  }
+  if i32.eq(direction, LEFT) {
+    ghosts[gtype].index_x = i32.sub(ghosts[gtype].index_x, 1)
+  }
+  if i32.eq(direction, RIGHT) {
+    ghosts[gtype].index_x = i32.add(ghosts[gtype].index_x, 1)
+  }
+  ghosts[gtype].position = coords2position(ghosts[gtype].index_y, ghosts[gtype].index_x)
+}
+
+func calculateGhostDirection(ghost Ghost) (direction i32) {
+  var direction i32
+  var min_distance i32 = 100 // Infinite
+
+  var distance_up i32
+  if bool.and(bool.not(i32.eq(ghost.direction, DOWN)), canMove(UP, ghost.index_y, ghost.index_x)) {
+    distance_up = i32.add(i32.abs(i32.sub(player.index_x, ghost.index_x)), i32.abs(i32.sub(player.index_y, i32.sub(ghost.index_y, 1))))
+    if i32.lt(distance_up, min_distance) {
+      min_distance = distance_up
+      direction = UP
+    }
+    //str.print("UP")
+    //i32.print(distance_up)
+  }
+
+  var distance_down i32
+  if bool.and(bool.not(i32.eq(ghost.direction, UP)), canMove(DOWN, ghost.index_y, ghost.index_x)) {
+    distance_down = i32.add(i32.abs(i32.sub(player.index_x, ghost.index_x)), i32.abs(i32.sub(player.index_y, i32.add(ghost.index_y, 1))))
+    if i32.lt(distance_down, min_distance) {
+      min_distance = distance_down
+      direction = DOWN
+    }
+    //str.print("DOWN")
+    //i32.print(distance_down)
+  }
+
+  var distance_left i32
+  if bool.and(bool.not(i32.eq(ghost.direction, RIGHT)), canMove(LEFT, ghost.index_y, ghost.index_x)) {
+    distance_left = i32.add(i32.abs(i32.sub(player.index_x, i32.sub(ghost.index_x, 1))), i32.abs(i32.sub(player.index_y, ghost.index_y)))
+    if i32.lt(distance_left, min_distance) {
+      min_distance = distance_left
+      direction = LEFT
+    }
+    //str.print("LEFT")
+    //i32.print(distance_left)
+  }
+
+  var distance_right i32
+  if bool.and(bool.not(i32.eq(ghost.direction, LEFT)), canMove(RIGHT, ghost.index_y, ghost.index_x)) {
+    distance_right = i32.add(i32.abs(i32.sub(player.index_x, i32.add(ghost.index_x, 1))), i32.abs(i32.sub(player.index_y, ghost.index_y)))
+    if i32.lt(distance_right, min_distance) {
+      min_distance = distance_right
+      direction = RIGHT
+    }
+    //str.print("RIGHT")
+    //i32.print(distance_right)
+  }
+  //i32.print(ghost.index_x)
+  //i32.print(ghost.index_y)
+  //str.print("------------")
+  return direction
+}
+
+func randomGhostDirection(ghost Ghost) (direction i32) {
+  var direction i32
+  direction = i32.rand(0, 4)
+
+  for bool.not(bool.and(bool.not(i32.eq(direction, reverseDirection(ghost.direction))), canMove(direction, ghost.index_y, ghost.index_x))) { // For not working try twice?
+    direction = i32.rand(0, 4)
+  }
+
+  return direction
+}
+
+func reverseDirection(direction i32) (reverse i32) {
+  var reverse i32
+
+  if i32.eq(direction, UP) {
+    reverse = DOWN
+  }
+  if i32.eq(direction, DOWN) {
+    reverse = UP
+  }
+  if i32.eq(direction, LEFT) {
+    reverse = RIGHT
+  }
+  if i32.eq(direction, RIGHT) {
+    reverse = LEFT
+  }
+
+  return reverse
+}
+
+func releaseGhost() () {
+  for i:=0; i<4; i++ {
+    if i32.eq(ghosts[i].status, GHOST_MODE_IN_HOUSE) {
+      ghosts[i].index_x = 13
+      ghosts[i].index_y = 11
+      ghosts[i].status = GHOST_MODE_CHASE
+      return;
+    }
+  }
+}
+
+type Point struct {
+  position graphical2d.Position2D
+  color graphical2d.Color
+  radius f32
+  ptype i32
+  index_x i32
+  index_y i32
+  active bool
+}
+var points [1000] Point
+var points_count i32 = 0
+
+func newPoint (line i32, collumn i32, pt i32) (point Point) {
+  var pos graphical2d.Position2D
+  pos = coords2position(line, collumn)
+
+  var col graphical2d.Color
+  col = graphical2d.newColor(1.0, 1.0, 1.0)
+
+  var rad f32
+  if i32.eq(pt, PATH_CELL_WITH_SIMPLE_POINT) {
+    rad = 0.01
+  }
+  if i32.eq(pt, PATH_CELL_WITH_SUPER_POINT) {
+    rad = 0.015
+  }
+
+  var point Point
+  point = Point {
+    position: pos,
+    color: col,
+    radius: rad,
+    ptype: pt,
+    index_x: collumn,
+    index_y: line,
+    active: true}
+  return point
+}
+
+func drawPoint(point Point) () {
+  if bool.and(f32.lt(frame, 1.0), i32.eq(point.ptype, PATH_CELL_WITH_SUPER_POINT)) {
+    graphical2d.drawCircle(point.position, f32.add(point.radius, 0.005), point.color)
+  } else {
+    graphical2d.drawCircle(point.position, point.radius, point.color)
+  }
+}
+
+func checkPlayerGhostCollision(ghost Ghost) () {
+  if bool.and(i32.eq(player.index_x, ghost.index_x), i32.eq(player.index_y, ghost.index_y)) {
+    if i32.eq(ghost.status, GHOST_MODE_FRIGHTENED) {
+      ghosts[ghost.gtype].index_x = 14
+      ghosts[ghost.gtype].index_y = 13
+      ghosts[ghost.gtype].status = GHOST_MODE_IN_HOUSE
+    }
+  }
+}
+
+
+func drawGameArea() () {
+  for i:=0; i<y_cells; i++ {
+    for j:=0; j<x_cells; j++ {
+      graphical2d.drawRectangle(cells[i][j].position, cells[i][j].dimensions, cells[i][j].color)
+    }
+  }
+}
+
+func get_board_line(i i32) (line []i32) {
+    var line [28]i32
+    if i32.eq(i, 1) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 2) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 3) {
+      line = [28]i32{1,  2,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  2,  1}
+    }
+    if i32.eq(i, 4) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 5) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 6) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 7) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 8) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 9) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 10) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  3,  1,  1,  3,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 11) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  3,  1,  1,  3,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 12) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 13) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  1,  1,  5,  5,  1,  1,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 14) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  3,  3,  3,  3,  3,  3,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 15) {
+      line = [28]i32{3,  3,  3,  3,  3,  3,  0,  3,  3,  3,  1,  3,  3,  3,  3,  3,  3,  1,  3,  3,  3,  0,  3,  3,  3,  3,  3,  3}
+    }
+    if i32.eq(i, 16) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  3,  3,  3,  3,  3,  3,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 17) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  1,  1,  1,  1,  1,  1,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 18) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 19) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  1,  1,  1,  1,  1,  1,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 20) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  0,  1,  1,  3,  1,  1,  1,  1,  1,  1,  1,  1,  3,  1,  1,  0,  1,  1,  1,  1,  1,  1}
+    }
+    if i32.eq(i, 21) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 22) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 23) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  0,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 24) {
+      line = [28]i32{1,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  0,  3,  3,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 25) {
+      line = [28]i32{1,  1,  1,  0,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  0,  1,  1,  1}
+    }
+    if i32.eq(i, 26) {
+      line = [28]i32{1,  1,  1,  0,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  0,  1,  1,  1}
+    }
+    if i32.eq(i, 27) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 28) {
+      line = [28]i32{1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1}
+    }
+    if i32.eq(i, 29) {
+      line = [28]i32{1,  2,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  1,  1,  0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  1}
+    }
+    if i32.eq(i, 30) {
+      line = [28]i32{1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1}
+    }
+    if i32.eq(i, 31) {
+      line = [28]i32{1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1}
+    }
+    return line
+}
+
+/*
+func initializeBoard() () {
+  str.print("[+] Started board initialization")
+  str.print("[+] Finished board initialization")
+}*/
+
+func initializeItem(line i32, col i32, item_type i32) () {
+  var x f32
+  var y f32
+  x = f32.add(-1.0, f32.add(f32.mul(i32.f32(col), CELL_WIDTH), f32.div(CELL_WIDTH, 2.0)))
+  y = f32.sub(1.0, f32.add(f32.mul(i32.f32(line), CELL_HEIGHT), f32.div(CELL_HEIGHT, 2.0)))
+  if i32.eq(item_type, WALL_CELL) {
+    cells[line][col] = newCell(x, y, line, col, WALL_CELL)
+  }
+  if i32.eq(item_type, PATH_CELL) {
+    cells[line][col] = newCell(x, y, line, col, PATH_CELL)
+  }
+  if i32.eq(item_type, PATH_CELL_WITH_SIMPLE_POINT) {
+    points[points_count] = newPoint(line, col, PATH_CELL_WITH_SIMPLE_POINT)
+    points_count = i32.add(points_count, 1)
+    cells[line][col] = newCell(x, y, line, col, PATH_CELL)
+  }
+  if i32.eq(item_type, PATH_CELL_WITH_SUPER_POINT) {
+    points[points_count] = newPoint(line, col, PATH_CELL_WITH_SUPER_POINT)
+    points_count = i32.add(points_count, 1)
+    cells[line][col] = newCell(x, y, line, col, PATH_CELL)
+  }
+  if i32.eq(item_type, GATE_CELL) {
+    cells[line][col] = newCell(x, y, line, col, GATE_CELL)
+  }
+}
+
+func keyboardManager(window str, key i32, scancode i32, action i32, mods i32) () {
+  if bool.and(i32.eq(key, 262), i32.eq(action, 1)) {
+    movePlayer(RIGHT)
+  }
+  if bool.and(i32.eq(key, 263), i32.eq(action, 1)) {
+    movePlayer(LEFT)
+  }
+  if bool.and(i32.eq(key, 264), i32.eq(action, 1)) {
+    movePlayer(DOWN)
+  }
+  if bool.and(i32.eq(key, 265), i32.eq(action, 1)) {
+    movePlayer(UP)
+  }
+}
+
+func main() {
+  glfw.Init()
+
+  glfw.CreateWindow("window", 840, 930, "PAC-MAN CX 1.0")
+  glfw.MakeContextCurrent("window")
+
+	gl.Init()
+  gl.Enable(gl.BLEND)
+  gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+  var program i32
+	program = gl.CreateProgram()
+  gl.LinkProgram(program)
+
+  glfw.SetKeyCallback("window", "keyboardManager")
+
+  // Initialize player
+  player = newPlayer(23, 13, 0.025)
+
+  // Initialize ghosts
+  ghosts[0] = newGhost(11, 13, 0, GHOST_MODE_CHASE)
+  ghosts[1] = newGhost(14, 11, 1, GHOST_MODE_IN_HOUSE)
+  ghosts[2] = newGhost(14, 13, 2, GHOST_MODE_IN_HOUSE)
+  ghosts[3] = newGhost(14, 15, 3, GHOST_MODE_IN_HOUSE)
+
+  var i i32
+  var j i32
+  var line [28]i32
+  for i=0; i<y_cells; i++ {
+    line = get_board_line(i32.add(i, 1))
+    for j=0; j<x_cells; j++ {
+      initializeItem(i, j, line[j])
+    }
+  }
+
+  for bool.not(glfw.ShouldClose("window")) {
+    gl.Clear(gl.COLOR_BUFFER_BIT)
+    gl.Enable(gl.TEXTURE_2D)
+    gl.UseProgram(program)
+
+    for i=0; i<4; i++ {
+      updateGhostMode(ghosts[i])
+    }
+
+    // Check if point was caught
+    for i=0; i<points_count; i++ {
+      if bool.and(bool.and(i32.eq(points[i].index_x, player.index_x), i32.eq(points[i].index_y, player.index_y)), points[i].active) {
+        points[i].active = false
+        if i32.eq(points[i].ptype, PATH_CELL_WITH_SUPER_POINT) {
+          for j=0; j<4; j++ {
+            if i32.eq(ghosts[j].status, GHOST_MODE_CHASE) {
+              ghosts[j].status = GHOST_MODE_FRIGHTENED
+              ghosts[j].last_event_time = glfw.GetTime()
+              ghosts[j].direction = reverseDirection(ghosts[j].direction)
+            }
+          }
+        }
+      }
+    }
+
+    // move ghosts
+    if f32.eq(frame, 0) {
+      for i=0; i<4; i++ {
+        moveGhost(i)
+        checkPlayerGhostCollision(ghosts[i])
+      }
+    }
+
+    // Check if should release ghost
+    if f64.gteq(f64.sub(glfw.GetTime(), TIME_LAST_GHOST_RELEASED), f32.f64(10.0)) {
+      str.print("Releasing Ghost")
+      releaseGhost()
+      TIME_LAST_GHOST_RELEASED = glfw.GetTime()
+    }
+
+    // Render menus
+    drawGameArea()
+
+    // Render player
+    drawPlayer()
+
+    // render points
+    for i=0; i<points_count; i++ {
+      if bool.eq(points[i].active, true) {
+        drawPoint(points[i])
+      }
+    }
+
+    // Render ghosts
+    for i=0; i<4; i++ {
+        drawGhost(ghosts[i])
+    }
+
+    if f32.gteq(frame, 2.0) {
+      frame = 0.0
+    } else {
+      frame = f32.add(frame, 0.1)
+    }
+
+		glfw.PollEvents()
+    glfw.SwapBuffers("window")
+  }
+}
