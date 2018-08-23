@@ -1,4 +1,4 @@
-# PacMan CX - Version 1.0
+# PacMan CX - Version 0.0.1
 
 ![pacman cx](https://github.com/galah4d/pacman-cx/blob/master/screenshots/screenshot-main.png)
 

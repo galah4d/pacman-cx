@@ -12,3 +12,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - The way the code was structured in order to make it simpler and easier to read.
+
+### Removed
+- The sideway path that should lead to the teleport cells was causing issues so
+  I decided to remove it for now. (Fix in progress)
