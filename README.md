@@ -55,7 +55,8 @@ The code is currently very disorganized due to the fact that this was my first e
 If you want to show your appreciation for my work fell free to send a contribution in Skycoin
 to the address below and/or dm me some kind words on [telegram](https://t.me/taekwondouglas).
   - Skycoin Address: vQxgd4Mq2eReLj3fhigSBGWmfNSMqQMoL3
-Thank you Skycoin community.
+
+Thank you Skycoin community!
 
 # Disclamer
 I am not part of the team responsible for the development of the CX programming language neither do I claim some sort of affiliation with the [Skycoin Project](https://www.skycoin.net/).
