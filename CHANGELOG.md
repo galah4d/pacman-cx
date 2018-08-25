@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.2] - 2018-08-25
+### Added
+- A game over condition once the player is caught by the ghosts 3 times.
+- Even though currently every level looks the same the player is now able to
+  progress through them. (level modifiers will be added in the upcoming versions)
+
+### Changed
+- The old game event controll system which was based on counting frame was
+  replaced with a time based system. This change allows the game to perform
+  similarly in devices with different specs.
+
+### Bugs
+- The addition of a time based system introduced a bug where sometimes catching
+  a Super Point does not trigger the Frightned Mode on the ghosts.
+
 ## [0.0.1] - 2018-08-24
 ### Added
 - A graphical lives system.

@@ -19,6 +19,7 @@ var DOWN_ARROW_KEY i32 = 264
 var UP_ARROW_KEY i32 = 265
 
 // Game flags
+var GAME_LEVEL i32 = 1
 var GAME_OVER bool = false
 var PLAYER_LIVES i32 = 3
 
@@ -50,8 +51,6 @@ var BASHFUL_SCATTER_LINE    i32 = 28
 var BASHFUL_SCATTER_COLLUMN i32 = 26
 var POKEY_SCATTER_LINE      i32 = 28
 var POKEY_SCATTER_COLLUMN   i32 = 1
-
-
 
 // Point constants
 var SIMPLE_POINT_RADIUS f32 = 0.01
@@ -86,7 +85,27 @@ var GHOST_FRIGHTENED_SEMI_LIMIT f64 = 7.0
 var GHOST_FRIGHTENED_LIMIT f64 = 10.0
 
 var GHOST_RELEASE_TIMER f64 = 0.0
-var GHOST_RELEASE_LIMIT f64 = 10.0
+var GHOST_RELEASE_LIMIT f64 = 6.0
+
+var GHOST_MOVEMENT_TIMER f64 = 0.0
+var GHOST_MOVEMENT_LIMIT f64 = 0.5
+
+// Animation timers
+var PLAYER_ANIMATION_TIMER f64 = 0.0
+var PLAYER_ANIMATION_SEMI_LIMIT f64 = 0.25
+var PLAYER_ANIMATION_LIMIT f64 = 0.5
+
+var GHOST_ANIMATION_TIMER f64 = 0.0
+var GHOST_ANIMATION_SEMI_LIMIT f64 = 0.25
+var GHOST_ANIMATION_LIMIT f64 = 0.5
+
+var POINT_ANIMATION_TIMER f64 = 0.0
+var POINT_ANIMATION_SEMI_LIMIT f64 = 0.2
+var POINT_ANIMATION_LIMIT f64 = 0.4
+
+// Timer modifiers
+var GHOST_RELESE_MODIFIER f64 = 0.5
+var GHOST_MOVEMENT_MODIFIER f64 = 0.05
 
 // Lives Variables
 var LIFE_SPAWN_LINE i32 = 30
@@ -103,7 +122,6 @@ var LEFT i32 = 2
 var RIGHT i32 = 3
 
 var SCORE i32 = 0
-var frame f32 = 0.0
 
 // Declaration of structss
 type Player struct {
@@ -303,16 +321,16 @@ func getGhostColor (gtype i32) (color graphical2d.Color) {
   var color graphical2d.Color
 
   if i32.eq(gtype, SHADOW_GHOST) {
-    color = graphical2d.newColor(1.0, 0.0, 0.0) // FIX ME define global colors
+    color = graphical2d.newColor(1.0, 0.0, 0.0) // Red color
   }
   if i32.eq(gtype, SPEEDY_GHOST) {
-    color = graphical2d.newColor(1.0, 0.5, 1.0)
+    color = graphical2d.newColor(1.0, 0.5, 1.0) // Pink color
   }
   if i32.eq(gtype, BASHFUL_GHOST) {
-    color = graphical2d.newColor(0.0, 1.0, 1.0)
+    color = graphical2d.newColor(0.0, 1.0, 1.0) // Cyan color
   }
   if i32.eq(gtype, POKEY_GHOST) {
-    color = graphical2d.newColor(1.0, 0.5, 0.25)
+    color = graphical2d.newColor(1.0, 0.5, 0.25) // Orange color
   }
 
   return color
@@ -567,7 +585,7 @@ func updateGhostMode(ghost Ghost) () {
       ghosts[ghost.gtype].status = GHOST_MODE_SCATTER
       GHOST_SCATTER_TIMER = glfw.GetTime()
     }
-    str.print("Chase mode")
+    //str.print("Chase mode")
   }
 
   if i32.eq(ghost.status, GHOST_MODE_SCATTER) {
@@ -575,7 +593,7 @@ func updateGhostMode(ghost Ghost) () {
       ghosts[ghost.gtype].status = GHOST_MODE_CHASE
       GHOST_CHASE_TIMER = glfw.GetTime()
     }
-    str.print("Scatter mode")
+    //str.print("Scatter mode")
   }
 
   if i32.eq(ghost.status, GHOST_MODE_FRIGHTENED) {
@@ -596,6 +614,14 @@ func releaseGhost() () {
       return;
     }
   }
+}
+
+func isTimerOver(timer f64, limit f64) (is_over bool) {
+  var is_over bool = false
+  if gteq(f64.sub(glfw.GetTime(), timer), f32.f64(limit)) {
+    is_over = true
+  }
+  return is_over
 }
 
 
@@ -639,10 +665,14 @@ func drawGameArea() () {
    Desctription : Renders the player
 */
 func drawPlayer() () {
-  if lt.eq(frame, 1.0) {
-    graphical2d.drawCircle(player.position, player.radius, player.color)
-  } else {
+  if isTimerOver(PLAYER_ANIMATION_TIMER, PLAYER_ANIMATION_SEMI_LIMIT) {
     graphical2d.drawPlayer2(player.position, player.radius, player.color)
+  } else {
+    graphical2d.drawCircle(player.position, player.radius, player.color)
+  }
+
+  if isTimerOver(PLAYER_ANIMATION_TIMER, PLAYER_ANIMATION_LIMIT) {
+    PLAYER_ANIMATION_TIMER = glfw.GetTime()
   }
 }
 
@@ -651,8 +681,9 @@ func drawPlayer() () {
 */
 func drawGhost(ghost Ghost) () {
   var color graphical2d.Color
+
   if i32.eq(ghost.status, GHOST_MODE_FRIGHTENED) {
-    if bool.and(f32.lt(frame, 1.0), gteq(f64.sub(glfw.GetTime(), GHOST_FRIGHTENED_TIMER), f32.f64(GHOST_FRIGHTENED_SEMI_LIMIT))) {
+    if bool.and(isTimerOver(GHOST_ANIMATION_TIMER, GHOST_ANIMATION_SEMI_LIMIT), isTimerOver(GHOST_FRIGHTENED_TIMER, GHOST_FRIGHTENED_SEMI_LIMIT)) {
       color = graphical2d.newColor(1.0, 1.0, 1.0)
     } else {
       color = graphical2d.newColor(0.0, 0.0, 1.0)
@@ -660,17 +691,35 @@ func drawGhost(ghost Ghost) () {
   } else {
     color = ghost.color
   }
-  graphical2d.drawGhost(ghost.position, ghost.radius, color, frame)
+
+  if isTimerOver(GHOST_ANIMATION_TIMER, GHOST_ANIMATION_SEMI_LIMIT) {
+    graphical2d.drawGhost(ghost.position, ghost.radius, color, 0.5) // FIX ME DrawGhost()
+  } else {
+    graphical2d.drawGhost(ghost.position, ghost.radius, color, 1.5) // FIX ME DrawGhost2()
+  }
+
+  if isTimerOver(GHOST_ANIMATION_TIMER, GHOST_ANIMATION_LIMIT) {
+    GHOST_ANIMATION_TIMER = glfw.GetTime()
+  }
 }
 
 /* Function     : drawPoint
    Desctription : Renders a point
 */
 func drawPoint(point Point) () {
-  if bool.and(f32.lt(frame, 1.0), i32.eq(point.ptype, PATH_CELL_WITH_SUPER_POINT)) {
-    graphical2d.drawCircle(point.position, f32.add(point.radius, 0.005), point.color)
+  if isTimerOver(POINT_ANIMATION_TIMER, POINT_ANIMATION_SEMI_LIMIT) {
+    if i32.eq(point.ptype, PATH_CELL_WITH_SUPER_POINT) {
+      graphical2d.drawCircle(point.position, f32.add(point.radius, 0.005), point.color)
+    }
+    if i32.eq(point.ptype, PATH_CELL_WITH_SIMPLE_POINT) {
+      graphical2d.drawCircle(point.position, point.radius, point.color)
+    }
   } else {
     graphical2d.drawCircle(point.position, point.radius, point.color)
+  }
+
+  if isTimerOver(POINT_ANIMATION_TIMER, POINT_ANIMATION_LIMIT) {
+    POINT_ANIMATION_TIMER = glfw.GetTime()
   }
 }
 
@@ -836,7 +885,7 @@ func keyboardManager(window str, key i32, scancode i32, action i32, mods i32) ()
   }
 }
 
-func main() {
+func initGLFW() () {
   glfw.Init()
 
   glfw.CreateWindow("window", WIDTH_WINDOW, HEIGHT_WINDOW, "PAC-MAN CX 1.0")
@@ -846,21 +895,17 @@ func main() {
   gl.Enable(gl.BLEND)
   gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
+  glfw.SetKeyCallback("window", "keyboardManager")
+}
+
+func initOpenGL() (program i32) {
   var program i32
 	program = gl.CreateProgram()
   gl.LinkProgram(program)
+  return program
+}
 
-  glfw.SetKeyCallback("window", "keyboardManager")
-
-  // Initialize player
-  player = newPlayer(PLAYER_SPAWN_LINE, PLAYER_SPAWN_COLLUMN, PLAYER_RADIUS)
-
-  // Initialize ghosts
-  ghosts[0] = newGhost(11, 13, 0, GHOST_MODE_CHASE)     // Shadow Ghost
-  ghosts[1] = newGhost(14, 11, 1, GHOST_MODE_IN_HOUSE)  // Speedy Ghost
-  ghosts[2] = newGhost(14, 13, 2, GHOST_MODE_IN_HOUSE)  // Bashful Ghost
-  ghosts[3] = newGhost(14, 15, 3, GHOST_MODE_IN_HOUSE)  // Pokey Ghost
-
+func setupScene() () {
   var i i32
   var j i32
 
@@ -873,12 +918,75 @@ func main() {
     }
   }
 
+  // Initialize player
+  player = newPlayer(PLAYER_SPAWN_LINE, PLAYER_SPAWN_COLLUMN, PLAYER_RADIUS)
+
+  // Initialize ghosts
+  ghosts[0] = newGhost(11, 13, 0, GHOST_MODE_CHASE)     // Shadow Ghost
+  ghosts[1] = newGhost(14, 11, 1, GHOST_MODE_IN_HOUSE)  // Speedy Ghost
+  ghosts[2] = newGhost(14, 13, 2, GHOST_MODE_IN_HOUSE)  // Bashful Ghost
+  ghosts[3] = newGhost(14, 15, 3, GHOST_MODE_IN_HOUSE)  // Pokey Ghost
+}
+
+func renderGame(program i32) () {
+  var i i32
+  var j i32
+
+  gl.Clear(gl.COLOR_BUFFER_BIT)
+  gl.Enable(gl.TEXTURE_2D)
+  gl.UseProgram(program)
+
+  drawGameArea()  // Render Board
+  drawPlayer()    // Render Player
+
+  // Render Points
+  for i=0; i<points_count; i++ {
+    if bool.eq(points[i].active, true) {
+      drawPoint(points[i])
+    }
+  }
+
+  // Render Ghosts
+  for i=0; i<4; i++ {
+      drawGhost(ghosts[i])
+  }
+
+  drawLives() // Render Lives
+}
+
+func isLevelCompleted() (is_completed bool) {
+  var is_completed bool = true
+  for i:=0; i<points_count; i++ {
+    if points[i].active {
+      is_completed = false
+    }
+  }
+  return is_completed
+}
+
+// FIX ME change game settings
+func levelUp() (){
+  goto newlevel_label // Restart game with different game settings
+}
+
+func main() {
+  // Initialize glfw
+  initGLFW()
+
+  // Initialize opengl
+  var program i32
+	program = initOpenGL()
+
+  newlevel_label:
+
+  // Initializes all game objects
+  setupScene()
+
+  var i i32
+  var j i32
+
   // Game loop
   for bool.and(bool.not(glfw.ShouldClose("window")), bool.not(GAME_OVER)) {
-    gl.Clear(gl.COLOR_BUFFER_BIT)
-    gl.Enable(gl.TEXTURE_2D)
-    gl.UseProgram(program)
-
     for i=0; i<4; i++ {
       updateGhostMode(ghosts[i])
     }
@@ -899,42 +1007,30 @@ func main() {
       }
     }
 
-    // move ghosts
-    if f32.eq(frame, 0) {
+    if f64.gteq(f64.sub(glfw.GetTime(), GHOST_MOVEMENT_TIMER), f32.f64(GHOST_MOVEMENT_LIMIT)) {
+      f64.print(f64.sub(glfw.GetTime(), GHOST_MOVEMENT_TIMER))
       for i=0; i<4; i++ {
         moveGhost(ghosts[i])
         checkPlayerGhostCollision(ghosts[i])
       }
+      GHOST_MOVEMENT_TIMER = glfw.GetTime()
     }
 
     // Check if should release ghost
-    if f64.gteq(f64.sub(glfw.GetTime(), GHOST_RELEASE_TIMER), f32.f64(GHOST_RELEASE_LIMIT)) {
-      releaseGhost()
+    if isTimerOver(GHOST_RELEASE_TIMER, GHOST_CHASE_LIMIT) {
+      // Does not release ghosts during frightned mode
+      if isTimerOver(GHOST_FRIGHTENED_TIMER, GHOST_FRIGHTENED_LIMIT) {
+        releaseGhost()
+      }
       GHOST_RELEASE_TIMER = glfw.GetTime()
     }
 
-    drawGameArea()  // Render Board
-    drawPlayer()    // Render Player
-
-    // Render Points
-    for i=0; i<points_count; i++ {
-      if bool.eq(points[i].active, true) {
-        drawPoint(points[i])
-      }
+    if isLevelCompleted() {
+      levelUp()
     }
 
-    // Render Ghosts
-    for i=0; i<4; i++ {
-        drawGhost(ghosts[i])
-    }
-
-    drawLives() // Render Lives
-
-    if f32.gteq(frame, 2.0) {
-      frame = 0.0
-    } else {
-      frame = f32.add(frame, 0.1)
-    }
+    // Render game
+    renderGame(program)
 
 		glfw.PollEvents()
     glfw.SwapBuffers("window")
