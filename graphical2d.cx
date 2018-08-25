@@ -323,3 +323,67 @@ func drawLife(center Position2D, radius f32, color Color) () {
 
   gl.End()
 }
+
+func drawLine(start Position2D, end Position2D, width Position2D, color Color) () {
+  gl.Begin(gl.POLYGON)
+  gl.Color3f(color.red, color.green, color.blue)
+
+  gl.Vertex3f(start.x, start.y, 0.0)
+  gl.Vertex3f(f32.add(start.x, width), start.y, 0.0)
+  gl.Vertex3f(f32.add(end.x, width), end.y, 0.0)
+  gl.Vertex3f(end.x, end.y, 0.0)
+
+  gl.End()
+}
+
+func drawSkycoin(center Position2D, outside_radius f32, inside_radius f32, color Color) () {
+  var position Position2D
+  var dimensions Dimensions2D
+
+  //position = newPosition2D(center.x, center.y)
+  //drawCircle(center, outside_radius, color)
+
+  var inside_color Color
+  inside_color = newColor(1.0, 1.0, 1.0)
+
+  position = newPosition2D(center.x, f32.add(center.y, f32.mul(inside_radius, 0.5)))
+  drawCircle(position, inside_radius, inside_color)
+
+  position = newPosition2D(f32.add(center.x, inside_radius), f32.sub(center.y, f32.mul(inside_radius, 0.5)))
+  drawCircle(position, inside_radius, inside_color)
+
+  position = newPosition2D(f32.sub(center.x, inside_radius), f32.sub(center.y, f32.mul(inside_radius, 0.5)))
+  drawCircle(position, inside_radius, inside_color)
+
+  position = newPosition2D(center.x, f32.sub(center.y, f32.mul(inside_radius, 0.5)))
+  dimensions = newDimensions2D(f32.mul(inside_radius, 2.0), f32.mul(inside_radius, 2.0))
+  drawRectangle(position, dimensions, inside_color)
+
+  var start Position2D
+  var end Position2D
+
+  start = newPosition2D(f32.sub(center.x, f32.mul(inside_radius, 1.5)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(center.x, f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.001, color)
+
+  start = newPosition2D(f32.sub(center.x, f32.mul(inside_radius, 1.0)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 0.5)), f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.00125, color)
+
+  start = newPosition2D(f32.sub(center.x, f32.mul(inside_radius, 0.5)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 1.0)), f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.0015, color)
+
+  start = newPosition2D(f32.sub(center.x, f32.mul(inside_radius, 0.0)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 1.5)), f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.00175, color)
+
+  start = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 0.5)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 2.0)), f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.002, color)
+
+  start = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 1.0)), f32.sub(center.y, f32.mul(inside_radius, 1.5)))
+  end = newPosition2D(f32.add(center.x, f32.mul(inside_radius, 2.5)), f32.add(center.y, f32.mul(inside_radius, 1.5)))
+  drawLine(start, end, 0.0025, color)
+
+}

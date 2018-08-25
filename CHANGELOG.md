@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.0.3] - 2018-08-25
+### Added
+- A visual representation of the current level was is now shown at the bottom
+  left corner of the screen.
+- Leveling up now changes the behavior of ghosts making them faster and more
+  agressive.
+
+### Changed
+- The maximum level is now capped at level 10.
+
+### Removed
+- The bug causing inconsistecy while triggering Frightned Mode is now fixed.
+
 ## [0.0.2] - 2018-08-25
 ### Added
 - A game over condition once the player is caught by the ghosts 3 times.

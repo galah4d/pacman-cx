@@ -1,4 +1,4 @@
-# PacMan CX - Version 0.0.1
+# PacMan CX - Version 0.0.3
 
 ![pacman cx](https://github.com/galah4d/pacman-cx/blob/master/screenshots/screenshot-main.png)
 
@@ -50,6 +50,12 @@ The code is currently very disorganized due to the fact that this was my first e
    - Implement differnt ghost movement patterns. (Done)
    - Add the support for multiple levels.
    - Polish movement mechanics.
+
+# Contribute
+If you want to show your appreciation for my work fell free to send a contribution in Skycoin
+to the address below and/or dm me some kind words on [telegram](https://t.me/taekwondouglas).
+  - Skycoin Address: vQxgd4Mq2eReLj3fhigSBGWmfNSMqQMoL3
+Thank you Skycoin community.
 
 # Disclamer
 I am not part of the team responsible for the development of the CX programming language neither do I claim some sort of affiliation with the [Skycoin Project](https://www.skycoin.net/).
