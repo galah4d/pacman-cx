@@ -791,7 +791,7 @@ func renderLevel() () {
   }
 }
 
-func get_board_line(i i32) (line []i32) {
+func get_board_line(i i32) (line [28]i32) {
     var line [28]i32
     if i32.eq(i, 1) {
       line = [28]i32{1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1}
