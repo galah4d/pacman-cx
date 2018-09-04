@@ -1,5 +1,7 @@
 package graphical2d
 
+import "gl"
+
 type Position2D struct {
   x f32
   y f32
@@ -289,7 +291,7 @@ func newRectangle (dim Dimensions2D, col Color) (rectangle Rectangle) {
 }
 
 func setRectangleWidth (rectangle Rectangle, w i32) (rectangle Rectangle) {
-  rectangle.dimensions = setDimensionsWidth(rectangle.dimensions, w)
+  rectangle.dimensions = setDimensionsWidth(rectangle.dimensions, i32.f32(w))
   return rectangle
 }
 
@@ -324,7 +326,7 @@ func drawLife(center Position2D, radius f32, color Color) () {
   gl.End()
 }
 
-func drawLine(start Position2D, end Position2D, width Position2D, color Color) () {
+func drawLine(start Position2D, end Position2D, width f32, color Color) () {
   gl.Begin(gl.POLYGON)
   gl.Color3f(color.red, color.green, color.blue)
 
