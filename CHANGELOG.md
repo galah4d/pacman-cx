@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 - The maximum level is now capped at level 10.
 
 ### Removed
-- The bug causing inconsistecy while triggering Frightned Mode is now fixed.
+- The bug causing inconsistecy while triggering Frightened Mode is now fixed.
 
 ## [0.0.2] - 2018-08-25
 ### Added
@@ -29,7 +29,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bugs
 - The addition of a time based system introduced a bug where sometimes catching
-  a Super Point does not trigger the Frightned Mode on the ghosts.
+  a Super Point does not trigger the Frightened Mode on the ghosts.
 
 ## [0.0.1] - 2018-08-24
 ### Added
