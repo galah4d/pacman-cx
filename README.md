@@ -38,7 +38,7 @@ The game should be ready to run.
 In order to run the game type the following command:
 
 ```sh
-$ cx graphical2d.cx pac-man.cx
+$ cx *.cx
 ```
 
 Use the arrows to move the player.
@@ -57,6 +57,3 @@ to the address below and/or dm me some kind words on [telegram](https://t.me/tae
   - Skycoin Address: vQxgd4Mq2eReLj3fhigSBGWmfNSMqQMoL3
 
 Thank you Skycoin community!
-
-# Disclamer
-I am not part of the team responsible for the development of the CX programming language neither do I claim some sort of affiliation with the [Skycoin Project](https://www.skycoin.net/).
