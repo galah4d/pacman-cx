@@ -45,8 +45,7 @@ func renderGhostEaterMeter() {
     GHOST_FRIGHTENED_TIMER,
     GHOST_FRIGHTENED_LIMIT)) {
 
-    var posL graphical2d.Position2D
-    var posR graphical2d.Position2D
+    var pos graphical2d.Position2D
     var dim graphical2d.Dimensions2D
     var col graphical2d.Color
 
@@ -54,33 +53,19 @@ func renderGhostEaterMeter() {
     f = f64.div(f, GHOST_FRIGHTENED_LIMIT)
     var fraction f32 = f64.f32(f)
 
-    posL = graphical2d.Position2D{ x: f32.add(left, CELL_HALF_HEIGHT), y: 0.0 }
-    posR = graphical2d.Position2D{ x: f32.sub(right, CELL_HALF_HEIGHT), y: 0.0 }
-
-
-    // blinking red background
-    dim = graphical2d.Dimensions2D{ width: CELL_HALF_HEIGHT, height: 2.0 }
+    // red background
+    pos = graphical2d.Position2D{ x: 0.0, y: 1.0 - CELL_HALF_HEIGHT }
+    dim = graphical2d.Dimensions2D{ width: 2.0, height: CELL_HALF_WIDTH }
     col = graphical2d.Color{ red: 1.0, green: 0.0, blue: 0.0 }
 
-    if blinkStatusOn() {
-      if player.position.x < 0.0 {
-        graphical2d.drawRectangle(posL, dim, col)
-      }else{
-        graphical2d.drawRectangle(posR, dim, col)
-      }
-    }
-
+    graphical2d.drawRectangle(pos, dim, col)
 
     // shrinking green bar
-    dim.height = f32.sub(2.0, fraction * 2.0)
+    dim.width = f32.sub(2.0, fraction * 2.0)
     col.red = 0.0
     col.green = 1.0
 
-    if player.position.x < 0.0 {
-      graphical2d.drawRectangle(posL, dim, col)
-    }else{
-      graphical2d.drawRectangle(posR, dim, col)
-    }
+    graphical2d.drawRectangle(pos, dim, col)
   }
 }
 
